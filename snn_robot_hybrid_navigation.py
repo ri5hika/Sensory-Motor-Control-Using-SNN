@@ -13,9 +13,6 @@ from snntorch import surrogate
 import joblib
 import random
 
-# =============================
-# CONSTANTS
-# =============================
 ARENA_SIZE = 8.0
 NUM_SENSORS = 7
 SEQ_LEN = 20
@@ -53,9 +50,6 @@ class TemporalSNN(nn.Module):
             _, mem2 = self.lif2(cur2, mem2)
         return mem2
 
-# =============================
-# LOAD MODEL
-# =============================
 device = torch.device("cpu")
 model = TemporalSNN().to(device)
 model.load_state_dict(torch.load("snn_temporal_model.pth", map_location=device))
@@ -95,9 +89,6 @@ def sense(pos, theta, obstacles, sensor_range):
 
     return np.array(readings), hit_points
 
-# =============================
-# HIGH-LEVEL BEHAVIOR
-# =============================
 def attraction_steering(pos, theta, obstacles, gain=0.15):
     centers = np.array([p[:2] for _, p in obstacles])
     dists = np.linalg.norm(centers - pos, axis=1)
@@ -118,7 +109,7 @@ def boundary_avoidance(pos):
     return 0.0
 
 # =============================
-# STREAMLIT UI
+# STREAMLIT 
 # =============================
 st.set_page_config(layout="wide")
 st.title("Bio-Inspired Sensory-Motor Control Using Spiking Neural Networks")
@@ -148,9 +139,6 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 
-# =============================
-# GENERATE OBSTACLES
-# =============================
 obstacles = []
 
 for _ in range(num_obstacles):
@@ -204,9 +192,6 @@ for _ in range(steps):
 trajectory = np.array(trajectory)[::RENDER_SKIP]
 sensor_hits = sensor_hits[::RENDER_SKIP]
 
-# =============================
-# ANIMATION
-# =============================
 fig, ax = plt.subplots(figsize=(7, 7))
 ax.set_xlim(0, ARENA_SIZE)
 ax.set_ylim(0, ARENA_SIZE)
