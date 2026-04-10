@@ -1,10 +1,8 @@
 # Bio-Inspired Robot Navigation using Spiking Neural Networks
 
-## Overview
-
 This project implements a sensory-motor control system for robot navigation using a **Spiking Neural Network (SNN)**. The system simulates a differential-drive robot equipped with multiple directional sensors operating in a 2D environment with obstacles.
 
-The core idea is to model control using **temporal spike-based computation**, inspired by biological neural systems, instead of traditional continuous-valued neural networks.
+The approach is based on **temporal spike-based computation**, inspired by biological neural systems.
 
 ---
 
@@ -12,234 +10,114 @@ The core idea is to model control using **temporal spike-based computation**, in
 
 ### 1. Sensor Model
 
-The robot is equipped with ( N = 7 ) directional range sensors distributed over an angular field:
+The robot has N = 7 directional sensors distributed between -pi/2 and +pi/2.
 
-[
-\theta_i \in \left[-\frac{\pi}{2}, \frac{\pi}{2}\right]
-]
-
-Each sensor returns a normalized distance:
-
-[
-s_i = \frac{d_i}{d_{\text{max}}}, \quad s_i \in [0,1]
-]
-
+Each sensor outputs a normalized distance:
+s_i = d_i / d_max
 where:
-
-* ( d_i ) = distance to nearest obstacle along ray
-* ( d_{\text{max}} ) = maximum sensor range
+* d_i = distance to nearest obstacle
+* d_max = maximum sensor range
+* s_i ∈ [0, 1]
 
 ---
 
 ### 2. Spike Encoding
 
-Sensor readings are converted into spike trains using **rate-based stochastic encoding**:
-
-[
-x_i^{(t)} \sim \text{Bernoulli}(s_i)
-]
+Sensor values are converted into spike trains using stochastic rate encoding:
+x_i(t) ~ Bernoulli(s_i)
 
 This produces a binary spike sequence:
-
-[
-X \in {0,1}^{T \times N}
-]
+X ∈ {0,1}^{T × N}
 
 where:
-
-* ( T ) = temporal window length
-* ( N ) = number of sensors
+* T = temporal sequence length
+* N = number of sensors
 
 ---
 
 ### 3. Spiking Neural Network (SNN)
 
-The model uses **Leaky Integrate-and-Fire (LIF)** neurons.
+The network uses Leaky Integrate-and-Fire (LIF) neurons.
 
-#### Membrane Potential Dynamics
+#### Membrane Potential Update
 
-[
-V(t+1) = \beta V(t) + I(t)
-]
-
+V(t+1) = beta * V(t) + I(t)
 where:
-
-* ( V(t) ) = membrane potential
-* ( \beta \in (0,1) ) = decay constant
-* ( I(t) ) = input current
+* V(t) = membrane potential
+* beta ∈ (0,1) = decay factor
+* I(t) = input current
 
 #### Spike Generation
 
-[
-S(t) =
-\begin{cases}
-1, & \text{if } V(t) \geq V_{\text{th}} \
-0, & \text{otherwise}
-\end{cases}
-]
-
-After spiking:
-
-[
-V(t) \leftarrow V(t) - V_{\text{th}}
-]
+S(t) = 1 if V(t) ≥ V_th, else 0
+After a spike:
+V(t) = V(t) - V_th
 
 ---
 
 ### 4. Network Architecture
 
-[
-\text{Input (7)} \rightarrow \text{Linear (96)} \rightarrow \text{LIF} \rightarrow \text{Linear (2)} \rightarrow \text{LIF}
-]
+Input (7) → Linear (96) → LIF → Linear (2) → LIF
 
-Temporal processing is performed over a sequence:
+The network processes a temporal sequence:
+x(1), x(2), ..., x(T)
 
-[
-{x^{(1)}, x^{(2)}, \dots, x^{(T)}}
-]
-
-Final membrane state is used as output:
-
-[
-y = V_{\text{out}}(T)
-]
+Final output is the membrane state at time T:
+y = V_out(T)
 
 ---
 
 ### 5. Motor Output
 
-The network predicts wheel velocities:
-
-[
+The model predicts wheel velocities:
 (v_l, v_r)
-]
-
 These are rescaled using a trained scaler.
 
 ---
 
 ### 6. Robot Kinematics
 
-The robot follows differential drive equations:
-
 #### Linear Velocity
 
-[
-v = \frac{v_l + v_r}{2}
-]
+v = (v_l + v_r) / 2
 
 #### Angular Velocity
 
-[
-\omega = \frac{v_r - v_l}{L}
-]
-
-where ( L ) is the wheel base.
+omega = (v_r - v_l) / L
+where L is the wheel base.
 
 #### State Update
 
-[
-\theta_{t+1} = \theta_t + \omega \Delta t
-]
-
-[
-x_{t+1} = x_t + v \cos(\theta) \Delta t
-]
-
-[
-y_{t+1} = y_t + v \sin(\theta) \Delta t
-]
+theta(t+1) = theta(t) + omega * dt
+x(t+1) = x(t) + v * cos(theta) * dt
+y(t+1) = y(t) + v * sin(theta) * dt
 
 ---
 
 ## Simulation Environment
 
+* UI made using Streamlit
 * 2D square arena
-* Randomly generated circular obstacles
-* Collision avoidance emerges from learned behavior
+* Random objects of different shapes and sizes
+* Robot learns obstacle avoidance behavior
+* Can control the shape, size, number of obstacles as well as the speed, steps etc. of the robot.
 
 ---
 
 ## Dataset
 
-The dataset is generated via simulation using an expert controller.
+Generated using simulation with an expert controller.
 
 ### Structure
 
-* ( X \in \mathbb{R}^{E \times T \times N} ): sensor readings
-* ( Y \in \mathbb{R}^{E \times T \times 2} ): motor outputs
-
+* X: sensor data with shape (E, T, N)
+* Y: motor outputs with shape (E, T, 2)
 where:
+* E = number of episodes
+* T = steps per episode
+* N = number of sensors
 
-* ( E ) = number of episodes
-* ( T ) = steps per episode
-* ( N ) = number of sensors
+#### Noise Injection
 
-Noise is injected into sensor readings:
+s_tilde = clip(s + Normal(0, sigma^2), 0, 1)
 
-[
-\tilde{s} = \text{clip}(s + \mathcal{N}(0, \sigma^2), 0, 1)
-]
-
----
-
-## Execution
-
-### Install dependencies
-
-```
-pip install streamlit torch snntorch matplotlib numpy joblib
-```
-
-### Run application
-
-```
-streamlit run snn5.py
-```
-
----
-
-## Output
-
-* Robot trajectory visualization
-* Sensor ray interactions
-* Animated simulation (GIF)
-
----
-
-## Key Characteristics
-
-* Temporal computation using spike trains
-* Event-driven processing instead of continuous activations
-* Bio-inspired neuron dynamics
-* Learned sensor-to-motor mapping
-
----
-
-## Limitations
-
-* Uses rate-based spike encoding (not fully event-driven)
-* Evaluation metrics are heuristic (not task-optimal)
-* No reinforcement learning or online adaptation
-
----
-
-## Future Work
-
-* Replace rate coding with temporal coding schemes
-* Introduce reward-based learning (RL + SNN)
-* Add collision penalties and goal-directed tasks
-* Extend to multi-agent environments
-
----
-
-## Summary
-
-This project demonstrates how spiking neural networks can be applied to continuous control problems by combining:
-
-* stochastic spike encoding
-* leaky integrate-and-fire neuron models
-* temporal sequence processing
-* differential drive kinematics
-
-The result is a biologically inspired control system capable of obstacle avoidance in a simulated environment.
